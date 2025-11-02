@@ -6,54 +6,7 @@ import { AuthService } from '@/lib/auth';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    // Verify admin authentication
-    const cookieStore = cookies();
-    const token = cookieStore.get('admin_token')?.value;
-
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const payload = AuthService.verifyToken(token);
-    if (!payload) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
-    }
-
-    // Connect to database
-    await connectToDatabase();
-
-    const contact = await Contact.findById(params.id);
-
-    if (!contact) {
-      return NextResponse.json(
-        { error: 'Contact not found' },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({ contact });
-
-  } catch (error) {
-    console.error('Error fetching contact:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Verify admin authentication
@@ -78,6 +31,55 @@ export async function PATCH(
     // Connect to database
     await connectToDatabase();
 
+    const { id } = await params;
+    const contact = await Contact.findById(id);
+
+    if (!contact) {
+      return NextResponse.json(
+        { error: 'Contact not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ contact });
+
+  } catch (error) {
+    console.error('Error fetching contact:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    // Verify admin authentication
+    const cookieStore = await cookies();
+    const token = cookieStore.get('admin_token')?.value;
+
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const payload = AuthService.verifyToken(token);
+    if (!payload) {
+      return NextResponse.json(
+        { error: 'Invalid token' },
+        { status: 401 }
+      );
+    }
+
+    // Connect to database
+    await connectToDatabase();
+
+    const { id } = await params;
     const { status, notes } = await request.json();
 
     // Validate status
@@ -119,11 +121,11 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Verify admin authentication
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const token = cookieStore.get('admin_token')?.value;
 
     if (!token) {
@@ -152,7 +154,8 @@ export async function DELETE(
     // Connect to database
     await connectToDatabase();
 
-    const contact = await Contact.findByIdAndDelete(params.id);
+    const { id } = await params;
+    const contact = await Contact.findByIdAndDelete(id);
 
     if (!contact) {
       return NextResponse.json(
