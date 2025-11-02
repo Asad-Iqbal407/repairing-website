@@ -96,7 +96,7 @@ export async function PATCH(
     updateData.updatedAt = new Date();
 
     const contact = await Contact.findByIdAndUpdate(
-      params.id,
+      id,
       updateData,
       { new: true }
     );
